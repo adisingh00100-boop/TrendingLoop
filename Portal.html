@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Console | Trending Loop</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --brand: #000; --bg: #f8fafc; --blue: #2563eb; --red: #ef4444; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding-bottom: 80px; color: #1e293b; }
+        #authArea { position: fixed; inset: 0; background: #fff; z-index: 3000; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .auth-card { width: 100%; max-width: 400px; text-align: center; background: #fff; padding: 30px; border-radius: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); }
+        input, textarea { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 12px; outline: none; box-sizing: border-box; font-family: inherit; }
+        .btn-black { width: 100%; padding: 16px; background: #000; color: #fff; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; text-transform: uppercase; margin-top: 10px; width: 100%; }
+        .captcha-box { background: #eee; padding: 15px; border-radius: 12px; margin: 15px 0; display: flex; justify-content: space-around; align-items: center; }
+        #captchaImg { font-family: 'Courier New', monospace; font-size: 24px; font-weight: 900; letter-spacing: 5px; color: #555; background: #fff; padding: 5px 15px; border-radius: 5px; text-decoration: line-through; }
+        .price-tag { font-size: 32px; font-weight: 900; margin: 10px 0; }
+        .top-nav { background: #fff; padding: 12px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .nav-profile { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .nav-logo-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #000; background: #eee; }
+        .container { padding: 20px; max-width: 600px; margin: auto; }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-box { background: #000; color: #fff; padding: 20px; border-radius: 20px; }
+        .stat-box div { font-size: 22px; font-weight: 800; margin-top: 5px; }
+        .order-card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 4000; justify-content: center; align-items: center; padding: 20px; }
+        .modal-card { background: #fff; width: 100%; max-width: 400px; border-radius: 20px; padding: 25px; max-height: 85vh; overflow-y: auto; }
+        #fab { position: fixed; bottom: 90px; right: 20px; width: 60px; height: 60px; background: #000; color: #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: pointer; z-index: 100; }
+        .bottom-menu { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 1px solid #eee; display: none; justify-content: space-around; padding: 15px 0; z-index: 200; }
+        .menu-item { text-align: center; font-size: 10px; font-weight: 800; color: #94a3b8; cursor: pointer; text-transform: uppercase; }
+        .menu-item.active { color: #000; }
+    </style>
+</head>
+<body>
+
+<div id="authArea">
+    <div class="auth-card">
+        <h1>Trending Loop</h1>
+        <div id="loginForm">
+            <input type="number" id="lPhone" placeholder="Mobile Number">
+            <input type="password" id="lPass" placeholder="Password">
+            <button class="btn-black" onclick="handleLogin()">Login</button>
+            <p onclick="toggleAuth('reg')" style="font-size:12px; margin-top:20px; cursor:pointer;">New Partner? <b>Join for ₹799</b></p>
+        </div>
+        <div id="regForm" style="display:none;">
+            <div id="regDetails">
+                <input type="text" id="rShop" placeholder="Shop Name">
+                <input type="text" id="rLoc" placeholder="Location">
+                <input type="number" id="rPhone" placeholder="WhatsApp Number">
+                <input type="password" id="rPass" placeholder="Set Password">
+                <div class="captcha-box">
+                    <div id="captchaImg">----</div>
+                    <div onclick="generateCaptcha()" style="cursor:pointer; font-size:20px;">🔄</div>
+                </div>
+                <input type="text" id="captchaInput" placeholder="Enter Captcha">
+                <button class="btn-black" onclick="showPaymentStep()">Next: Pay ₹799</button>
+                <p onclick="toggleAuth('login')" style="font-size:12px; margin-top:15px; cursor:pointer;">Back to Login</p>
+            </div>
+            <div id="payStep" style="display:none;">
+                <h3>Registration Fee</h3>
+                <div class="price-tag">₹799</div>
+                <img id="regQR" style="width:180px; border:4px solid #000; border-radius:10px; margin-bottom:10px;">
+                <input type="text" id="rTxn" placeholder="Transaction ID (UTR)">
+                <button class="btn-black" onclick="verifyAndRegister()">Activate My Shop</button>
+                <p onclick="document.getElementById('payStep').style.display='none'; document.getElementById('regDetails').style.display='block';" style="cursor:pointer; font-size:12px; color:red; margin-top:10px;">Back</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="top-nav">
+    <div class="nav-profile" onclick="openShopSwitcher()">
+        <img id="navShopLogo" src="https://cdn-icons-png.flaticon.com/512/606/606673.png" class="nav-logo-img">
+        <b id="activeShopName">My Shop</b>
+    </div>
+    <span onclick="openSettings()" style="cursor:pointer; font-size:22px;">⚙️</span>
+</div>
+
+<div class="container">
+    <div id="dashboard" class="view-section active">
+        <div class="stats-grid">
+            <div class="stat-box"><small>Orders</small><div id="cOrders">0</div></div>
+            <div class="stat-box" style="background:var(--blue);"><small>Revenue</small><div id="cRev">₹0</div></div>
+        </div>
+        <div id="oList"></div>
+    </div>
+    <div id="inventory" class="view-section">
+        <div id="pList"></div>
+    </div>
+</div>
+
+<div id="settingsModal" class="modal">
+    <div class="modal-card">
+        <h3>Settings</h3>
+        <div style="text-align:center; margin-bottom:15px;">
+            <img id="editLogoPre" src="" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #000;"><br>
+            <button onclick="document.getElementById('logoInp').click()" style="margin-top:10px; font-size:11px; padding:5px 10px;">Change Logo</button>
+            <input type="file" id="logoInp" style="display:none;" onchange="previewLogo(this)">
+        </div>
+        <input type="text" id="setShop" placeholder="Shop Name">
+        <input type="password" id="setPass" placeholder="New Password">
+        <button class="btn-black" onclick="updateSettings()">Save Changes</button>
+        <button class="btn-black" style="background:red;" onclick="deleteMyAccount()">Delete Shop</button>
+        <p onclick="closeModals()" style="text-align:center; color:gray; cursor:pointer; margin-top:15px;">Close</p>
+    </div>
+</div>
+
+<div id="shopModal" class="modal">
+    <div class="modal-card">
+        <h3>My Shops</h3>
+        <div id="myShopsList"></div>
+        <input type="text" id="newShopName" placeholder="New Shop Name">
+        <button class="btn-black" onclick="addNewShop()">+ Create Another Shop (₹799)</button>
+        <p onclick="closeModals()" style="text-align:center; color:gray; cursor:pointer; margin-top:15px;">Close</p>
+    </div>
+</div>
+
+<div id="addModal" class="modal">
+    <div class="modal-card">
+        <h3 id="modalTitle">New Product</h3>
+        <input type="hidden" id="editProductId">
+        <input type="text" id="pName" placeholder="Product Name">
+        <input type="number" id="pPrice" placeholder="Price">
+        <textarea id="pDesc" placeholder="Description"></textarea>
+        <button onclick="document.getElementById('pImgInp').click()" class="btn-black" style="background:#eee; color:#000;">+ PHOTOS</button>
+        <input type="file" id="pImgInp" multiple style="display:none;" onchange="pImgPre(this)">
+        <div id="pImgTrack" style="display:flex; flex-wrap:wrap; margin-top:10px;"></div>
+        <button class="btn-black" id="publishBtn" onclick="publish()">Publish</button>
+        <p onclick="closeModals()" style="text-align:center; color:gray; cursor:pointer; margin-top:10px;">Cancel</p>
+    </div>
+</div>
+
+<div id="fab" onclick="openAddModal()">+</div>
+
+<div class="bottom-menu" id="botMenu">
+    <div class="menu-item active" id="mDashBtn" onclick="switchTab('dashboard')">Home</div>
+    <div class="menu-item" id="mInvBtn" onclick="switchTab('inventory')">Inventory</div>
+</div>
+
+<script>
+    const firebaseConfig = { apiKey: "AIzaSyD0pWvaqGlQH93w3ddooHQ6Yq1-6GHus6Y", authDomain: "trending-loop.firebaseapp.com", projectId: "trending-loop" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let currentCaptcha = "", uploadedImages = [], finalLogo = "";
+    let shopName = "", userPhone = "", userPass = "", userLoc = "";
+
+    function generateCaptcha() {
+        const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+        let code = "";
+        for(let i=0; i<5; i++) code += chars.charAt(Math.floor(Math.random()*chars.length));
+        currentCaptcha = code;
+        document.getElementById('captchaImg').innerText = code;
+    }
+
+    function toggleAuth(t) {
+        document.getElementById('regForm').style.display = t=='reg'?'block':'none';
+        document.getElementById('loginForm').style.display = t=='login'?'block':'none';
+        generateCaptcha();
+    }
+
+    function showPaymentStep() {
+        shopName = document.getElementById('rShop').value;
+        userPhone = document.getElementById('rPhone').value;
+        userPass = document.getElementById('rPass').value;
+        userLoc = document.getElementById('rLoc').value;
+        const cap = document.getElementById('captchaInput').value.toUpperCase();
+        if(!shopName || !userPhone || !userPass || !userLoc) return alert("Please fill all details!");
+        if(cap !== currentCaptcha) return alert("Wrong Captcha!");
+        document.getElementById('regDetails').style.display = 'none';
+        document.getElementById('payStep').style.display = 'block';
+        const upi = "9897180748@fam";
+        document.getElementById('regQR').src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent('upi://pay?pa='+upi+'&am=799&tn=RegFee_'+shopName)}`;
+    }
+
+    async function verifyAndRegister() {
+        const txn = document.getElementById('rTxn').value;
+        if(!txn) return alert("Transaction ID (UTR) Required!");
+        await db.collection("vendors").add({
+            shop: shopName, phone: userPhone, password: userPass, location: userLoc, txnId: txn, logo: "", feePaid: 799, status: "Pending", time: new Date()
+        });
+        alert("Details Submitted! We will verify your payment in 6-12 hours. Account will be active after verification.");
+        location.reload();
+    }
+
+    async function handleLogin() {
+        const ph = document.getElementById('lPhone').value, ps = document.getElementById('lPass').value;
+        const snap = await db.collection("vendors").where("phone", "==", ph).get();
+        let f = false;
+        snap.forEach(doc => { 
+            const d = doc.data();
+            if(d.password === ps) { 
+                f = true;
+                if(d.status === "Active") {
+                    localStorage.setItem("masterPhone", ph); localStorage.setItem("activeShop", d.shop); location.reload(); 
+                } else {
+                    alert("Account Verification Pending! It takes 6-12 hours after payment.");
+                }
+            } 
+        });
+        if(!f) alert("Incorrect Login Details!");
+    }
+
+    async function loadData() {
+        const sh = localStorage.getItem("activeShop");
+        const oSnap = await db.collection("orders").where("store", "==", sh).get();
+        const pSnap = await db.collection("products").where("store", "==", sh).get();
+        let hO = "", hP = "", c=0, r=0;
+        oSnap.forEach(d => { const o = d.data(); c++; r += parseInt(o.price); hO += `<div class="order-card"><b>ID: #${d.id.slice(-6)}</b>\n${o.item} - ₹${o.price}\n<select style="width:100%;" onchange="updateStatus('${d.id}', this.value)"><option value="Pending" ${o.status=='Pending'?'selected':''}>Pending</option><option value="Delivered" ${o.status=='Delivered'?'selected':''}>Delivered</option></select></div>`; });
+        pSnap.forEach(d => { hP += `<div style="display:flex; justify-content:space-between; padding:15px; background:#fff; margin-bottom:10px; border-radius:12px;"><b>${d.data().name}</b><div><span onclick="editProduct('${d.id}')" style="color:blue; margin-right:15px;">EDIT</span><span onclick="del('${d.id}')" style="color:red;">DEL</span></div></div>`; });
+        document.getElementById('oList').innerHTML = hO || "No Orders"; document.getElementById('pList').innerHTML = hP || "No Products";
+        document.getElementById('cOrders').innerText = c; document.getElementById('cRev').innerText = "₹"+r;
+    }
+
+    function openAddModal() {
+        document.getElementById('modalTitle').innerText = "New Product";
+        document.getElementById('editProductId').value = "";
+        document.getElementById('pName').value = ""; document.getElementById('pPrice').value = ""; document.getElementById('pDesc').value = "";
+        document.getElementById('pImgTrack').innerHTML = ""; uploadedImages = [];
+        document.getElementById('publishBtn').innerText = "Publish";
+        document.getElementById('addModal').style.display = 'flex';
+    }
+
+    async function editProduct(id) {
+        const doc = await db.collection("products").doc(id).get();
+        const p = doc.data();
+        document.getElementById('modalTitle').innerText = "Edit Product";
+        document.getElementById('editProductId').value = id;
+        document.getElementById('pName').value = p.name; document.getElementById('pPrice').value = p.price; document.getElementById('pDesc').value = p.desc;
+        uploadedImages = p.images || [];
+        document.getElementById('pImgTrack').innerHTML = "";
+        uploadedImages.forEach(img => { document.getElementById('pImgTrack').innerHTML += `<img src="${img}" style="width:50px;height:50px;margin:5px;border-radius:5px;">`; });
+        document.getElementById('publishBtn').innerText = "Update";
+        document.getElementById('addModal').style.display = 'flex';
+    }
+
+    async function publish() {
+        const n = document.getElementById('pName').value, p = document.getElementById('pPrice').value, d = document.getElementById('pDesc').value, id = document.getElementById('editProductId').value;
+        const data = { name: n, price: p, desc: d, store: localStorage.getItem("activeShop"), images: uploadedImages, time: new Date() };
+        if(id) await db.collection("products").doc(id).update(data); else await db.collection("products").add(data);
+        location.reload();
+    }
+
+    async function check() {
+        const ph = localStorage.getItem("masterPhone"), sh = localStorage.getItem("activeShop");
+        if(ph && sh) {
+            document.getElementById('authArea').style.display='none'; document.getElementById('botMenu').style.display='flex';
+            const snap = await db.collection("vendors").where("phone", "==", ph).where("shop", "==", sh).get();
+            snap.forEach(doc => { document.getElementById('navShopLogo').src = doc.data().logo || 'https://cdn-icons-png.flaticon.com/512/606/606673.png'; document.getElementById('activeShopName').innerText = sh; });
+            loadData();
+        } generateCaptcha();
+    }
+
+    function previewLogo(i) { const r = new FileReader(); r.onload = (e) => { finalLogo = e.target.result; document.getElementById('editLogoPre').src = finalLogo; }; r.readAsDataURL(i.files[0]); }
+    function openSettings() { document.getElementById('settingsModal').style.display = 'flex'; document.getElementById('setShop').value = localStorage.getItem("activeShop"); document.getElementById('editLogoPre').src = document.getElementById('navShopLogo').src; }
+    async function updateSettings() {
+        const n = document.getElementById('setShop').value, p = document.getElementById('setPass').value, ph = localStorage.getItem("masterPhone"), old = localStorage.getItem("activeShop");
+        const snap = await db.collection("vendors").where("phone", "==", ph).where("shop", "==", old).get();
+        snap.forEach(async doc => { let up = { shop: n }; if(p) up.password = p; if(finalLogo) up.logo = finalLogo; await db.collection("vendors").doc(doc.id).update(up); localStorage.setItem("activeShop", n); location.reload(); });
+    }
+    async function deleteMyAccount() { if(confirm("Delete shop?")) { const sh = localStorage.getItem("activeShop"), ph = localStorage.getItem("masterPhone"); const v = await db.collection("vendors").where("phone", "==", ph).where("shop", "==", sh).get(); v.forEach(async d => await db.collection("vendors").doc(d.id).delete()); localStorage.clear(); location.reload(); } }
+    async function openShopSwitcher() { document.getElementById('shopModal').style.display = 'flex'; const snap = await db.collection("vendors").where("phone", "==", localStorage.getItem("masterPhone")).get(); const list = document.getElementById('myShopsList'); list.innerHTML = ""; snap.forEach(doc => { list.innerHTML += `<div style="padding:15px; border:1px solid #eee; border-radius:10px; margin-bottom:10px;" onclick="selectShop('${doc.data().shop}')">${doc.data().shop}</div>`; }); }
+    function selectShop(s) { localStorage.setItem("activeShop", s); location.reload(); }
+    async function addNewShop() { 
+        const n = document.getElementById('newShopName').value, ph = localStorage.getItem("masterPhone"); 
+        const snap = await db.collection("vendors").where("phone", "==", ph).limit(1).get();
+        let ps = ""; snap.forEach(d => ps = d.data().password);
+        await db.collection("vendors").add({ shop: n, phone: ph, password: ps, logo: "", feePaid: 799, status: "Pending", time: new Date() }); 
+        alert("New shop request sent! Verify payment to activate.");
+        location.reload();
+    }
+    function pImgPre(i) { for(let f of i.files) { const r = new FileReader(); r.onload = (e) => { uploadedImages.push(e.target.result); document.getElementById('pImgTrack').innerHTML += `<img src="${e.target.result}" style="width:50px;height:50px;margin:5px;border-radius:5px;">`; }; r.readAsDataURL(f); } }
+    function switchTab(t) { document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active')); document.getElementById(t).classList.add('active'); document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active')); document.getElementById(t === 'dashboard' ? 'mDashBtn' : 'mInvBtn').classList.add('active'); }
+    function closeModals() { document.querySelectorAll('.modal').forEach(m => m.style.display='none'); }
+    async function updateStatus(id, s) { await db.collection("orders").doc(id).update({ status: s }); loadData(); }
+    async function del(id) { if(confirm("Delete?")) { await db.collection("products").doc(id).delete(); loadData(); } }
+    window.onload = check;
+</script>
+</body>
+</html>
