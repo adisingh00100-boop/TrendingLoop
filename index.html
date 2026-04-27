@@ -18,7 +18,7 @@
         .cart-badge { position: absolute; top: -8px; right: -8px; background: var(--gold); color: #000; font-size: 10px; padding: 2px 5px; border-radius: 50%; font-weight: 900; }
 
         /* Sidebar */
-        .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: #fff; z-index: 2000; transition: 0.3s; padding: 30px 20px; box-sizing: border-box; overflow-y: auto; }
+        .sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: #fff; z-index: 2000; transition: 0.3s; padding: 30px 20px; box-sizing: border-box; }
         .sidebar.active { left: 0; }
         .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; z-index: 1500; }
         .overlay.active { display: block; }
@@ -39,7 +39,7 @@
         .p-name { font-weight: 700; font-size: 11px; color: #666; text-transform: uppercase; }
         .p-price { font-family: 'Oswald', sans-serif; font-size: 18px; color: #000; margin-top: 5px; display: block; }
 
-        /* Detailed View */
+        /* Detailed View & Shop Branding */
         #detailView { display: none; background: #fff; }
         .shop-banner { display: flex; align-items: center; gap: 10px; padding: 15px; background: #fafafa; border-bottom: 1px solid #eee; }
         .shop-logo-circle { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
@@ -63,10 +63,6 @@
         #orderModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: flex-end; }
         .m-content { background: #fff; padding: 30px; border-radius: 30px 30px 0 0; width: 100%; max-width: 500px; text-align: center; }
         input, select { width: 100%; padding: 16px; margin: 8px 0; border: 1px solid #eee; border-radius: 15px; outline: none; background: #f9f9f9; box-sizing: border-box; font-family: inherit; font-weight: 600; }
-        
-        /* HELP MODAL STYLE */
-        #helpModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 4000; justify-content: center; align-items: center; padding: 20px; }
-        .h-content { background: #fff; padding: 25px; border-radius: 20px; width: 100%; max-width: 400px; max-height: 80vh; overflow-y: auto; position: relative; }
     </style>
 </head>
 <body>
@@ -75,14 +71,12 @@
     <div class="sidebar" id="sidebar">
         <div style="font-weight:900; font-size:20px; margin-bottom:20px; border-bottom:2px solid #000;">MENU</div>
         <div class="sidebar-link" onclick="showHome(); toggleMenu();">Home 🏠</div>
+        
         <a href="agent-join.html" class="sidebar-link" style="color: #2563eb;">Become an Agent 💰</a>
         <a href="agent.html" class="sidebar-link">Agent Login 🔐</a>
+        
         <a href="portal.html" class="sidebar-link">Partner Registration 🚀</a>
         <a href="portal.html" class="sidebar-link">Vendor Console 🔑</a>
-        
-        <div style="margin-top:30px; padding-top:20px; border-top:2px solid #f0f0f0;">
-            <div class="sidebar-link" onclick="openHelp()" style="color:#888; font-size:12px;">Terms & Support 🛠️</div>
-        </div>
     </div>
 
     <div class="navbar">
@@ -104,6 +98,11 @@
         <div onclick="showHome()" style="font-weight:800; cursor:pointer; margin-bottom:15px; font-size:12px;">← BACK TO SHOPPING</div>
         <h2 style="font-weight:900;">MY ORDERS</h2>
         <div id="meeshoList"></div>
+        <div style="background:#fff; border-radius:20px; padding:20px; margin-top:20px;">
+            <p style="font-size:10px; font-weight:800; color:#aaa;">SEARCH BY PHONE</p>
+            <input type="number" id="trackPhone" placeholder="Enter Registered Number">
+            <button class="buy-btn" onclick="fetchByPhone()" style="padding:15px; font-size:12px;">FIND ORDERS</button>
+        </div>
     </div>
 
     <div id="detailView">
@@ -125,40 +124,22 @@
         </div>
     </div>
 
-    <div id="helpModal">
-        <div class="h-content">
-            <div onclick="closeHelp()" style="position:absolute; right:20px; top:20px; font-weight:900; cursor:pointer;">✕</div>
-            <h3 style="font-weight:900; margin-bottom:15px;">HELP & TERMS</h3>
-            
-            <div style="margin-bottom:20px;">
-                <b style="font-size:12px;">SUPPORT</b><br>
-                <p style="font-size:13px; color:#555; margin-top:5px;">
-                    Email: support@trendingloop.com
-                </p>
-            </div>
-
-            <div style="border-top:1px solid #eee; padding-top:15px;">
-                <b style="font-size:12px;">TERMS & CONDITIONS</b>
-                <ul style="font-size:11px; color:#777; padding-left:15px; margin-top:10px; line-height:1.6;">
-                    <li>Trending Loop is a marketplace connecting buyers and sellers.</li>
-                    <li>Product quality and delivery are handled by respective shops.</li>
-                    <li>Vendor registrations do not guarantee fixed sales.</li>
-                    <li>Platform is not liable for vendor-customer disputes.</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
     <div id="orderModal">
         <div class="m-content">
             <h3 style="font-weight:900;">CHECKOUT</h3>
             <input type="text" id="custN" placeholder="Full Name">
             <input type="number" id="custP" placeholder="WhatsApp Number">
             <input type="text" id="custA" placeholder="Full Delivery Address">
+            
             <select id="custSize">
                 <option value="" disabled selected>Select Size</option>
-                <option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option><option value="Free">Free Size</option>
+                <option value="S">Small (S)</option>
+                <option value="M">Medium (M)</option>
+                <option value="L">Large (L)</option>
+                <option value="XL">Extra Large (XL)</option>
+                <option value="Free Size">Free Size</option>
             </select>
+            
             <select id="payMethod" onchange="togglePay()"></select>
             <div id="qrSection" style="display:none; margin-top:10px;"><img src="" id="qrImg" style="width:150px;"></div>
             <button class="buy-btn" onclick="finalizeOrder()" style="margin-top:20px;">CONFIRM ORDER</button>
@@ -173,8 +154,6 @@
         let allP = [], activeP = null;
 
         function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('overlay').classList.toggle('active'); }
-        function openHelp() { document.getElementById('helpModal').style.display = 'flex'; toggleMenu(); }
-        function closeHelp() { document.getElementById('helpModal').style.display = 'none'; }
 
         async function init() {
             const snap = await db.collection("products").orderBy("time", "desc").get();
@@ -229,33 +208,68 @@
                     else if(st==="Delivered"){ fill="100%"; truck="92%"; s2="done"; s3="done"; s4="done"; }
 
                     list.innerHTML += `<div class="meesho-card">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><b style="font-size:12px; color:var(--gold);">SOLD BY: ${o.store.toUpperCase()}</b><span style="font-size:10px; color:#888;">#${id.slice(-6)}</span></div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                            <b style="font-size:12px; color:var(--gold);">SOLD BY: ${o.store.toUpperCase()}</b>
+                            <span style="font-size:10px; color:#888;">#${id.slice(-6)}</span>
+                        </div>
                         <div style="font-size:14px; font-weight:700;">${o.item}</div>
-                        <div class="stepper"><div class="step-line"></div><div class="step-fill" style="width:${fill}"></div><div class="truck-icon" style="left:${truck}">🚚</div><div class="dots"><div class="dot ${s1}">✓</div><div class="dot ${s2}">✓</div><div class="dot ${s3}">✓</div><div class="dot ${s4}">✓</div></div><div class="step-labels"><span>Placed</span><span>Packing</span><span>Shipped</span><span>Delivered</span></div></div>
+                        <div class="stepper">
+                            <div class="step-line"></div><div class="step-fill" style="width:${fill}"></div>
+                            <div class="truck-icon" style="left:${truck}">🚚</div>
+                            <div class="dots"><div class="dot ${s1}">✓</div><div class="dot ${s2}">✓</div><div class="dot ${s3}">✓</div><div class="dot ${s4}">✓</div></div>
+                            <div class="step-labels"><span>Placed</span><span>Packing</span><span>Shipped</span><span>Delivered</span></div>
+                        </div>
                     </div>`;
                 }
             }
         }
 
-        function updateCartBadge() { const orders = JSON.parse(localStorage.getItem("myOrders") || "[]"); document.getElementById('cartBadge').innerText = orders.length; document.getElementById('cartBadge').style.display = orders.length > 0 ? 'block' : 'none'; }
-        function openOrderModal() { const pm = document.getElementById('payMethod'); pm.innerHTML = activeP.payment === 'online' ? `<option value="Online">Online Only</option>` : `<option value="COD">Cash on Delivery</option><option value="Online">Online Payment</option>`; document.getElementById('orderModal').style.display = 'flex'; }
+        function updateCartBadge() {
+            const orders = JSON.parse(localStorage.getItem("myOrders") || "[]");
+            document.getElementById('cartBadge').innerText = orders.length;
+            document.getElementById('cartBadge').style.display = orders.length > 0 ? 'block' : 'none';
+        }
+
+        function openOrderModal() {
+            const pm = document.getElementById('payMethod');
+            pm.innerHTML = activeP.payment === 'online' ? `<option value="Online">Online Only</option>` : `<option value="COD">Cash on Delivery</option><option value="Online">Online Payment</option>`;
+            document.getElementById('orderModal').style.display = 'flex';
+        }
         function closeModal() { document.getElementById('orderModal').style.display = 'none'; }
-        function togglePay() { const m = document.getElementById('payMethod').value; document.getElementById('qrSection').style.display = m === 'Online' ? 'block' : 'none'; if(m === 'Online') document.getElementById('qrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('upi://pay?pa=9897180748@fam&am='+activeP.price)}`; }
+        function togglePay() {
+            const m = document.getElementById('payMethod').value;
+            document.getElementById('qrSection').style.display = m === 'Online' ? 'block' : 'none';
+            if(m === 'Online') document.getElementById('qrImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent('upi://pay?pa=9897180748@fam&am='+activeP.price)}`;
+        }
 
         async function finalizeOrder() {
             const n = document.getElementById('custN').value, ph = document.getElementById('custP').value, ad = document.getElementById('custA').value, pm = document.getElementById('payMethod').value, sz = document.getElementById('custSize').value;
-            if(!n || !ph || !ad || !sz) return alert("Fill all details!");
+            if(!n || !ph || !ad || !sz) return alert("Please fill all details including size!");
+
             const vSnap = await db.collection("vendors").where("shop", "==", activeP.store).get();
             let vPh = "9897180748"; vSnap.forEach(v => vPh = v.data().phone);
+
+            // SAVING SIZE TO FIREBASE
             const res = await db.collection("orders").add({ item: activeP.name, size: sz, customer: n, phone: ph, address: ad, payment: pm, price: activeP.price, store: activeP.store, status: "Pending", time: new Date() });
-            let myOrders = JSON.parse(localStorage.getItem("myOrders") || "[]"); myOrders.push(res.id); localStorage.setItem("myOrders", JSON.stringify(myOrders));
+
+            let myOrders = JSON.parse(localStorage.getItem("myOrders") || "[]");
+            myOrders.push(res.id);
+            localStorage.setItem("myOrders", JSON.stringify(myOrders));
+
+            // ADDING SIZE TO WHATSAPP MESSAGE
             const msg = `*NEW ORDER FOR ${activeP.store.toUpperCase()}* 📦\n\n*Order ID:* #${res.id.slice(-6)}\n*Item:* ${activeP.name}\n*Size:* ${sz}\n*Customer:* ${n}\n*Phone:* ${ph}\n*Address:* ${ad}\n\n_Powered by Trending Loop_`;
             window.open(`https://wa.me/91${vPh}?text=${encodeURIComponent(msg)}`, '_blank');
             showTrack();
         }
 
-        async function fetchByPhone() { const ph = document.getElementById('trackPhone').value; const snap = await db.collection("orders").where("phone", "==", ph).get(); let ids = []; snap.forEach(doc => ids.push(doc.id)); renderOrders(ids); }
+        async function fetchByPhone() {
+            const ph = document.getElementById('trackPhone').value;
+            const snap = await db.collection("orders").where("phone", "==", ph).get();
+            let ids = []; snap.forEach(doc => ids.push(doc.id));
+            renderOrders(ids);
+        }
         window.onload = init;
     </script>
 </body>
-                </html>
+    </html>
+    
