@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trending Loop | Professional Marketplace</title>
+    
+    <meta name="monetag" content="4fbe0dc0f88d95934b9e9f1ecd3c4c4b">
+
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Oswald:wght@500&display=swap" rel="stylesheet">
@@ -39,7 +42,7 @@
         .p-name { font-weight: 700; font-size: 11px; color: #666; text-transform: uppercase; }
         .p-price { font-family: 'Oswald', sans-serif; font-size: 18px; color: #000; margin-top: 5px; display: block; }
 
-        /* Detailed View & Shop Branding */
+        /* Detailed View */
         #detailView { display: none; background: #fff; }
         .shop-banner { display: flex; align-items: center; gap: 10px; padding: 15px; background: #fafafa; border-bottom: 1px solid #eee; }
         .shop-logo-circle { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
@@ -71,10 +74,8 @@
     <div class="sidebar" id="sidebar">
         <div style="font-weight:900; font-size:20px; margin-bottom:20px; border-bottom:2px solid #000;">MENU</div>
         <div class="sidebar-link" onclick="showHome(); toggleMenu();">Home 🏠</div>
-        
         <a href="agent-join.html" class="sidebar-link" style="color: #2563eb;">Become an Agent 💰</a>
         <a href="agent.html" class="sidebar-link">Agent Login 🔐</a>
-        
         <a href="portal.html" class="sidebar-link">Partner Registration 🚀</a>
         <a href="portal.html" class="sidebar-link">Vendor Console 🔑</a>
     </div>
@@ -130,7 +131,6 @@
             <input type="text" id="custN" placeholder="Full Name">
             <input type="number" id="custP" placeholder="WhatsApp Number">
             <input type="text" id="custA" placeholder="Full Delivery Address">
-            
             <select id="custSize">
                 <option value="" disabled selected>Select Size</option>
                 <option value="S">Small (S)</option>
@@ -139,7 +139,6 @@
                 <option value="XL">Extra Large (XL)</option>
                 <option value="Free Size">Free Size</option>
             </select>
-            
             <select id="payMethod" onchange="togglePay()"></select>
             <div id="qrSection" style="display:none; margin-top:10px;"><img src="" id="qrImg" style="width:150px;"></div>
             <button class="buy-btn" onclick="finalizeOrder()" style="margin-top:20px;">CONFIRM ORDER</button>
@@ -249,14 +248,12 @@
             const vSnap = await db.collection("vendors").where("shop", "==", activeP.store).get();
             let vPh = "9897180748"; vSnap.forEach(v => vPh = v.data().phone);
 
-            // SAVING SIZE TO FIREBASE
             const res = await db.collection("orders").add({ item: activeP.name, size: sz, customer: n, phone: ph, address: ad, payment: pm, price: activeP.price, store: activeP.store, status: "Pending", time: new Date() });
 
             let myOrders = JSON.parse(localStorage.getItem("myOrders") || "[]");
             myOrders.push(res.id);
             localStorage.setItem("myOrders", JSON.stringify(myOrders));
 
-            // ADDING SIZE TO WHATSAPP MESSAGE
             const msg = `*NEW ORDER FOR ${activeP.store.toUpperCase()}* 📦\n\n*Order ID:* #${res.id.slice(-6)}\n*Item:* ${activeP.name}\n*Size:* ${sz}\n*Customer:* ${n}\n*Phone:* ${ph}\n*Address:* ${ad}\n\n_Powered by Trending Loop_`;
             window.open(`https://wa.me/91${vPh}?text=${encodeURIComponent(msg)}`, '_blank');
             showTrack();
