@@ -1,3 +1,4 @@
+// --- 1. FIREBASE CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyD0pWvaqGlQH93w3ddooHQ6Yq1-6GHus6w",
   authDomain: "trending-loop.firebaseapp.com",
@@ -14,17 +15,16 @@ let allProducts = [];
 let selectedProduct = ""; 
 let selectedPayment = "COD"; 
 
-// --- 🤖 TELEGRAM AUTOMATION SYSTEM ---
+// --- 2. 🤖 TELEGRAM AUTOMATION SYSTEM ---
 async function postToTelegram(name, price, image) {
     const token = "7966577329:AAHhRHxDC3D1543-53Cs8fzNs5eGSyjz_g8";
-    const chatId = "@trendingloop"; // Ekdum sahi username set kar diya hai
+    const chatId = "@trendingloop"; // Pakka kar lena ki yehi username hai channel ka
 
     const text = `🚀 <b>New Product on Trending Loop!</b>\n\n` +
                  `🛍️ <b>Item:</b> ${name}\n` +
                  `💰 <b>Price:</b> ₹${price}\n\n` +
-                 `🔗 <a href="https://trending-loop.com">View Details</a>`;
+                 `🔗 <a href="https://trending-loop.github.io/trending-loop/">View on Website</a>`;
     
-    // Pehle Photo ke saath koshish karenge
     const url = `https://api.telegram.org/bot${token}/sendPhoto`;
     const formData = new FormData();
     formData.append("chat_id", chatId);
@@ -35,21 +35,20 @@ async function postToTelegram(name, price, image) {
     try {
         const response = await fetch(url, { method: "POST", body: formData });
         const resData = await response.json();
-        
         if (!resData.ok) {
-            // Agar photo badi hai ya error hai, toh sirf Text bhej do
             console.log("Photo error, sending text only...");
             await fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(name + " listed for ₹" + price)}&parse_mode=HTML`);
         }
-        console.log("✅ Telegram: Success!");
+        console.log("✅ Telegram Success!");
     } catch (e) {
         console.error("❌ Telegram Error:", e);
     }
 }
 
-// --- SITE FUNCTIONS ---
+// --- 3. CUSTOMER FACING FUNCTIONS ---
 async function loadProducts() {
     const grid = document.getElementById('product-grid');
+    if(!grid) return;
     const snap = await db.collection("products").orderBy("timestamp", "desc").get();
     allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderGrid(allProducts);
@@ -57,7 +56,6 @@ async function loadProducts() {
 
 function renderGrid(products) {
     const grid = document.getElementById('product-grid');
-    if(!grid) return;
     grid.innerHTML = "";
     products.forEach((data) => {
         const out = data.inStock === false;
@@ -107,38 +105,33 @@ async function placeOrder() {
             product: selectedProduct, customerName: n, customerPhone: p, customerAddress: a,
             paymentMode: selectedPayment, orderTime: firebase.firestore.FieldValue.serverTimestamp()
         });
-        if(selectedPayment === 'Online') {
-            window.location.href = `https://wa.me/91XXXXXXXXXX?text=${encodeURIComponent("Hi, I ordered " + selectedProduct)}`;
-        } else {
-            alert("Order Success!");
-            closeModal();
-        }
+        alert("Order Success!");
+        closeModal();
     } catch (e) { alert(e.message); }
 }
 
-// --- VENDOR UPLOAD (AUTOMATED) ---
+// --- 4. VENDOR FUNCTIONS (WITH AUTO-POST) ---
 async function uploadToFirebase() {
     const n = document.getElementById('pName').value, pr = document.getElementById('pPrice').value, 
           cat = document.getElementById('pCategory').value, f = document.getElementById('pImage').files[0],
           cod = document.getElementById('pCod').checked;
 
-    if(!f || !n || !pr) { alert("Pehle details bharo!"); return; }
+    if(!f || !n || !pr) { alert("Details dalo bhai!"); return; }
     
     const reader = new FileReader();
     reader.readAsDataURL(f);
     reader.onload = async () => {
         const imageData = reader.result;
         try {
-            // 1. Firebase Save
             await db.collection("products").add({
                 name: n, price: pr, category: cat, image: imageData, inStock: true, codAllowed: cod,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            // 2. 🔥 Telegram Post Trigger
+            // 🔥 TRIGGER TELEGRAM
             await postToTelegram(n, pr, imageData);
 
-            alert("Product Live on Site & Telegram!");
+            alert("Product Live on Website & Telegram!");
             window.location.href = "home.html";
         } catch (err) {
             alert("Error: " + err.message);
@@ -153,7 +146,7 @@ async function loadInventory() {
     list.innerHTML = "";
     snap.forEach(doc => {
         const d = doc.data();
-        list.innerHTML += `<div class="item"><span>${d.name}</span><button onclick="toggleStock('${doc.id}', ${d.inStock !== false})">${d.inStock !== false ? 'Stock' : 'Out'}</button></div>`;
+        list.innerHTML += `<div class="item"><span>${d.name}</span><button onclick="toggleStock('${doc.id}', ${d.inStock !== false})">${d.inStock !== false ? 'In Stock' : 'Out of Stock'}</button></div>`;
     });
 }
 
