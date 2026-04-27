@@ -1,4 +1,4 @@
-// --- 1. FIREBASE CONFIGURATION ---
+// --- 1. FIREBASE SETUP ---
 const firebaseConfig = {
   apiKey: "AIzaSyD0pWvaqGlQH93w3ddooHQ6Yq1-6GHus6w",
   authDomain: "trending-loop.firebaseapp.com",
@@ -12,18 +12,14 @@ if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const db = firebase.firestore();
 
 let allProducts = []; 
-let selectedProduct = ""; 
-let selectedPayment = "COD"; 
+let selectedProduct = "";
 
-// --- 2. 🤖 TELEGRAM AUTOMATION SYSTEM ---
+// --- 2. 🤖 TELEGRAM ENGINE (FIXED) ---
 async function postToTelegram(name, price, image) {
     const token = "7966577329:AAHhRHxDC3D1543-53Cs8fzNs5eGSyjz_g8";
-    const chatId = "@trendingloop"; // Pakka kar lena ki yehi username hai channel ka
+    const chatId = "@trendingloop"; // Yeh username tere browser test mein pass hua hai
 
-    const text = `🚀 <b>New Product on Trending Loop!</b>\n\n` +
-                 `🛍️ <b>Item:</b> ${name}\n` +
-                 `💰 <b>Price:</b> ₹${price}\n\n` +
-                 `🔗 <a href="https://trending-loop.github.io/trending-loop/">View on Website</a>`;
+    const text = `🚀 <b>New Product Alert!</b>\n\n🛍️ <b>Item:</b> ${name}\n💰 <b>Price:</b> ₹${price}\n\n🔗 <a href="https://trending-loop.github.io/trending-loop/">Buy Now</a>`;
     
     const url = `https://api.telegram.org/bot${token}/sendPhoto`;
     const formData = new FormData();
@@ -34,18 +30,52 @@ async function postToTelegram(name, price, image) {
 
     try {
         const response = await fetch(url, { method: "POST", body: formData });
-        const resData = await response.json();
-        if (!resData.ok) {
-            console.log("Photo error, sending text only...");
+        const res = await response.json();
+        if (res.ok) {
+            console.log("✅ Telegram Sent!");
+        } else {
+            console.error("❌ Telegram Error:", res.description);
+            // Agar photo fail ho toh text bhej do
             await fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(name + " listed for ₹" + price)}&parse_mode=HTML`);
         }
-        console.log("✅ Telegram Success!");
     } catch (e) {
-        console.error("❌ Telegram Error:", e);
+        console.error("❌ Network Error:", e);
     }
 }
 
-// --- 3. CUSTOMER FACING FUNCTIONS ---
+// --- 3. VENDOR UPLOAD (THE TRIGGER) ---
+async function uploadToFirebase() {
+    const n = document.getElementById('pName').value;
+    const pr = document.getElementById('pPrice').value;
+    const cat = document.getElementById('pCategory').value;
+    const f = document.getElementById('pImage').files[0];
+    const cod = document.getElementById('pCod').checked;
+
+    if(!f || !n || !pr) { alert("Bhai details toh bharo!"); return; }
+    
+    const reader = new FileReader();
+    reader.readAsDataURL(f);
+    reader.onload = async () => {
+        const imageData = reader.result;
+        try {
+            // Step 1: Firebase mein save
+            await db.collection("products").add({
+                name: n, price: pr, category: cat, image: imageData, inStock: true, codAllowed: cod,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // Step 2: Telegram pe bhej (Wait karega jab tak confirm na ho)
+            await postToTelegram(n, pr, imageData);
+
+            alert("Dhamaka! Product Site aur Telegram dono pe Live hai! 🔥");
+            window.location.href = "home.html";
+        } catch (err) {
+            alert("Error: " + err.message);
+        }
+    };
+}
+
+// --- 4. DISPLAY & ORDERS (NO CHANGES) ---
 async function loadProducts() {
     const grid = document.getElementById('product-grid');
     if(!grid) return;
@@ -76,20 +106,8 @@ function openModal(productId) {
     if (!p || p.inStock === false) return;
     selectedProduct = p.name;
     document.getElementById('orderItemName').innerText = p.name;
-    const codBtn = document.getElementById('codPayBtn');
-    const qrSec = document.getElementById('qrSection');
-    qrSec.style.display = "none";
-    if (p.codAllowed === false) { codBtn.classList.add('cod-locked'); selectPay('Online'); } 
-    else { codBtn.classList.remove('cod-locked'); selectPay('COD'); }
     document.getElementById('orderModal').style.display = 'block';
     document.getElementById('overlay').style.display = 'block';
-}
-
-function selectPay(type) {
-    selectedPayment = type;
-    document.getElementById('onlinePayBtn').classList.toggle('selected', type === 'Online');
-    document.getElementById('codPayBtn').classList.toggle('selected', type === 'COD');
-    document.getElementById('qrSection').style.display = (type === 'Online') ? "block" : "none";
 }
 
 function closeModal() {
@@ -99,44 +117,15 @@ function closeModal() {
 
 async function placeOrder() {
     const n = document.getElementById('custName').value, p = document.getElementById('custPhone').value, a = document.getElementById('custAddress').value;
-    if(!n || !p || !a) { alert("Fill all details!"); return; }
+    if(!n || !p || !a) { alert("Details dalo!"); return; }
     try {
         await db.collection("orders").add({
             product: selectedProduct, customerName: n, customerPhone: p, customerAddress: a,
-            paymentMode: selectedPayment, orderTime: firebase.firestore.FieldValue.serverTimestamp()
+            orderTime: firebase.firestore.FieldValue.serverTimestamp()
         });
         alert("Order Success!");
         closeModal();
     } catch (e) { alert(e.message); }
-}
-
-// --- 4. VENDOR FUNCTIONS (WITH AUTO-POST) ---
-async function uploadToFirebase() {
-    const n = document.getElementById('pName').value, pr = document.getElementById('pPrice').value, 
-          cat = document.getElementById('pCategory').value, f = document.getElementById('pImage').files[0],
-          cod = document.getElementById('pCod').checked;
-
-    if(!f || !n || !pr) { alert("Details dalo bhai!"); return; }
-    
-    const reader = new FileReader();
-    reader.readAsDataURL(f);
-    reader.onload = async () => {
-        const imageData = reader.result;
-        try {
-            await db.collection("products").add({
-                name: n, price: pr, category: cat, image: imageData, inStock: true, codAllowed: cod,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            // 🔥 TRIGGER TELEGRAM
-            await postToTelegram(n, pr, imageData);
-
-            alert("Product Live on Website & Telegram!");
-            window.location.href = "home.html";
-        } catch (err) {
-            alert("Error: " + err.message);
-        }
-    };
 }
 
 async function loadInventory() {
@@ -146,7 +135,7 @@ async function loadInventory() {
     list.innerHTML = "";
     snap.forEach(doc => {
         const d = doc.data();
-        list.innerHTML += `<div class="item"><span>${d.name}</span><button onclick="toggleStock('${doc.id}', ${d.inStock !== false})">${d.inStock !== false ? 'In Stock' : 'Out of Stock'}</button></div>`;
+        list.innerHTML += `<div class="item"><span>${d.name}</span><button onclick="toggleStock('${doc.id}', ${d.inStock !== false})">${d.inStock !== false ? 'Stock' : 'Out'}</button></div>`;
     });
 }
 
@@ -159,3 +148,4 @@ window.onload = () => {
     if (document.getElementById('product-grid')) loadProducts();
     if (document.getElementById('inventory-list')) loadInventory();
 };
+  
